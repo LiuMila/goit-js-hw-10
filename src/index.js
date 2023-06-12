@@ -1,45 +1,50 @@
-import './css/styles.css';
-import { refs } from './js/refs';
-import { fetchCountries } from './js/fetchCountries';
-import { Notify } from 'notiflix/build/notiflix-notify-aio';
-import { makeItemsMarkup } from './js/makeItemsMarkup';
-import { makeCountrieCardMarkup } from './js/makeCountrieCardMarkup';
-import { clearMarkup } from './js/clearMarkup';
-var debounce = require('lodash.debounce');
+import { fetchBreeds, fetchCatByBreed } from './helpers-js/cat-api';
+import { createBreeds, createDescriptionBreeds } from './helpers-js/render-cat'
+import { select, loaded, infoCat } from './helpers-js/const-helper';
+import Notiflix from 'notiflix';
+import SlimSelect from 'slim-select';
 
-const DEBOUNCE_DELAY = 300;
 
-const { searchInput, countryList, countryInfo } = refs;
+select.addEventListener('change', selectBreed);
 
-function inputHendler() {
-  const searchCountrieName = searchInput.value.trim();
-
-  if (searchCountrieName === '') {
-    clearMarkup(refs);
-    return;
-  }
-
-  fetchCountries(searchCountrieName)
-    .then(countries => {
-      if (countries.length > 10) {
-        Notify.info(
-          'Too many matches found. Please enter a more specific name.'
-        );
-      } else if (countries.length > 2 && countries.length <= 10) {
-        clearMarkup(refs);
-
-        makeItemsMarkup({ countryList, countries });
-      } else if (countries.length === 1) {
-        clearMarkup(refs);
-
-        const countrie = countries[0];
-
-        makeCountrieCardMarkup({ countryInfo, countrie });
-      }
+function selectBreed() {
+loaded.classList.remove('load-remove');
+  fetchCatByBreed(select.value)
+    .then(breed => {
+removeSpinner()
+infoCat.innerHTML = `${createDescriptionBreeds(breed, breed.breeds)}`;
     })
-    .catch(error => {
-      Notify.failure('Oops, there is no country with that name');
+    .catch(() => {
+renderErr()
+    })
+    .finally(() => {
+removeSpinner()
     });
 }
 
-searchInput.addEventListener('input', debounce(inputHendler, DEBOUNCE_DELAY));
+fetchBreeds()
+  .then(cat => {
+removeSpinner()
+    select.insertAdjacentHTML('beforeend', createBreeds(cat));
+new SlimSelect({
+  select: select,
+});
+  })
+  .catch(() => {
+renderErr()
+  }).finally(() => {
+removeSpinner()
+    });;
+
+
+function removeSpinner() {
+        setTimeout(() => {
+        loaded.classList.add('load-remove');
+      }, 600);
+}
+
+  function renderErr() {
+        Notiflix.Notify.failure(
+      'Oops! Something went wrong! Try reloading the page!'
+    );
+  } 
